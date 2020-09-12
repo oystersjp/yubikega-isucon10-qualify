@@ -13,7 +13,7 @@ stop-services:
 start-services:
 	sudo systemctl start mysql
 	sleep 5
-	sudo systemctl stop isuumo.go.service
+	sudo systemctl start isuumo.go.service
 	sudo systemctl start nginx
 
 truncate-logs:
