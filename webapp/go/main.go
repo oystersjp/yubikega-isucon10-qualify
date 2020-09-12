@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -56,6 +57,11 @@ type ChairSearchResponse struct {
 
 type ChairListResponse struct {
 	Chairs []Chair `json:"chairs"`
+}
+
+type Coodinate struct {
+	Latitude  float64
+	Longitude float64
 }
 
 //Estate 物件
@@ -896,22 +902,27 @@ func searchEstateNazotte(c echo.Context) error {
 	}
 
 	estatesInPolygon := []Estate{}
-	for _, estate := range estatesInBoundingBox {
-		validatedEstate := Estate{}
 
-		point := fmt.Sprintf("'POINT(%f %f)'", estate.Latitude, estate.Longitude)
-		query := fmt.Sprintf(`SELECT * FROM estate WHERE id = ? AND ST_Contains(ST_PolygonFromText(%s), ST_GeomFromText(%s))`, coordinates.coordinatesToText(), point)
-		err = db.Get(&validatedEstate, query, estate.ID)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				continue
-			} else {
-				c.Echo().Logger.Errorf("db access is failed on executing validate if estate is in polygon : %v", err)
-				return c.NoContent(http.StatusInternalServerError)
-			}
-		} else {
-			estatesInPolygon = append(estatesInPolygon, validatedEstate)
+	for _, estate := range estatesInBoundingBox {
+
+		if naikaku(Coordinate{Longitude: estate.Longitude,Latitude: estate.Latitude}, coordinates.Coordinates) {
+			continue
 		}
+		estatesInPolygon = append(estatesInPolygon, estate)
+		////validatedEstate := Estate{}
+		////point := fmt.Sprintf("'POINT(%f %f)'", estate.Latitude, estate.Longitude)
+		////query := fmt.Sprintf(`SELECT * FROM estate WHERE id = ? AND ST_Contains(ST_PolygonFromText(%s), ST_GeomFromText(%s))`, coordinates.coordinatesToText(), point)
+		////err = db.Get(&validatedEstate, query, estate.ID)
+		//if err != nil {
+		//	if err == sql.ErrNoRows {
+		//		continue
+		//	} else {
+		//		c.Echo().Logger.Errorf("db access is failed on executing validate if estate is in polygon : %v", err)
+		//		return c.NoContent(http.StatusInternalServerError)
+		//	}
+		//} else {
+		//	estatesInPolygon = append(estatesInPolygon, estate)
+		//}
 	}
 
 	var re EstateSearchResponse
@@ -926,6 +937,50 @@ func searchEstateNazotte(c echo.Context) error {
 	return c.JSON(http.StatusOK, re)
 }
 
+func naikaku(coordinate Coordinate, coordinates []Coordinate) bool {
+	var deg float64 = 0
+	var p1x float64 = coordinate.Latitude
+	var p1y float64 = coordinate.Longitude
+	for i, co := range coordinates {
+		var p2x = co.Latitude
+		var p2y = co.Longitude
+		var p3x = coordinates[0].Latitude
+		var p3y = coordinates[0].Longitude
+
+		if (i < len(coordinates)) {
+			p3x = coordinates[i + 1].Latitude;
+			p3y = coordinates[i + 1].Longitude;
+		}
+
+		var ax = p2x - p1x
+		var ay = p2y - p1y
+		var bx = p3x - p1x
+		var by = p3y - p1y
+
+		var cos = (ax * bx + ay * by) / (math.Sqrt(ax * ax + ay * ay) * math.Sqrt(bx * bx + by * by))
+		deg += getDegree(math.Acos(cos))
+	}
+
+	if math.Round(deg) == 360 {
+		return true;
+	} else {
+		return false;
+	}
+	return false
+}
+
+// °単位の角度を0～360の範囲に収める
+func getDegree(deg float64) float64 {
+	// 360で割ったあまりを求める
+	deg = int(deg) % 360.0
+
+	// マイナスだったら360を足す
+	if 0.0 > deg {
+		deg += 360.0
+	}
+
+	return deg
+}
 func postEstateRequestDocument(c echo.Context) error {
 	m := echo.Map{}
 	if err := c.Bind(&m); err != nil {
