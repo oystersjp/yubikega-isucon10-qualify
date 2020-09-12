@@ -824,11 +824,9 @@ func searchEstates(c echo.Context) error {
 	}
 
 	estateMapMux.Lock()
-	for _, e := range estates {
-		// cannot use conditions (type []string) as type string in map indexgo
-		estateMap[conditions] = append(estateMap[conditions], e)
-	}
-	estateMapMux.UnLock()
+	// cannot use estates (type []Estate) as type *Estate in assignmentgo
+	estateMap[searchCondition] = estates
+	estateMapMux.Unlock()
 	// ここでestateMap[検索条件]ができた
 
 	// perPage = 25
@@ -836,9 +834,9 @@ func searchEstates(c echo.Context) error {
 
 	// このクエリをページ毎に呼ばないようにしたい
 	estateMapMux.RLock()
-	//
-	res.Estates = estateMap[conditions][page : page*perPage]
-	estateMapMux.RUnLock()
+	// cannot slice estateMap[searchCondition] (type *Estate)go
+	res.Estates = estateMap[searchCondition][page : page*perPage]
+	estateMapMux.RUnlock()
 
 	return c.JSON(http.StatusOK, res)
 }
