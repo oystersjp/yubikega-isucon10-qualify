@@ -527,7 +527,7 @@ func searchChairs(c echo.Context) error {
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res ChairSearchResponse
-	err = db.Get(&res.Count, countQuery+searchCondition, params...)
+	err = dbSlave.Get(&res.Count, countQuery+searchCondition, params...)
 	if err != nil {
 		c.Logger().Errorf("searchChairs DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -535,7 +535,7 @@ func searchChairs(c echo.Context) error {
 
 	chairs := []Chair{}
 	params = append(params, perPage, page*perPage)
-	err = db.Select(&chairs, searchQuery+searchCondition+limitOffset, params...)
+	err = dbSlave.Select(&chairs, searchQuery+searchCondition+limitOffset, params...)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.JSON(http.StatusOK, ChairSearchResponse{Count: 0, Chairs: []Chair{}})
