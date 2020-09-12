@@ -30,7 +30,7 @@ var chairSearchCondition ChairSearchCondition
 var estateSearchCondition EstateSearchCondition
 
 var (
-	LowPricedChairs = []Chair
+	LowPricedChairs    []Chair
 	LowPricedChairsMux = sync.RWMutex{}
 )
 
@@ -549,7 +549,7 @@ func updateGetLowPricedChair(c echo.Context) error {
 		c.Logger().Errorf("LowPricedChairsをオンメモリに Initialize script error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	return LowPricedChairs
+	return nil
 }
 
 func buyChair(c echo.Context) error {
@@ -613,13 +613,10 @@ func getChairSearchCondition(c echo.Context) error {
 
 func getLowPricedChair(c echo.Context) error {
 	// オンメモリにしたLowPricedChairから取ってくるようにする
-	var chairs = ChairListResponse{}
-
 	LowPricedChairsMux.RLock()
-	chairs = LowPricedChairs
-	LowPricedChairsMux.RUnlock()
+	defer LowPricedChairsMux.RUnlock()
 
-	return c.JSON(http.StatusOK, chairs)
+	return c.JSON(http.StatusOK, LowPricedChairs)
 }
 
 func getEstateDetail(c echo.Context) error {
