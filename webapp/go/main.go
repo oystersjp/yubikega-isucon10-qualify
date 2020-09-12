@@ -211,7 +211,7 @@ func NewMySQLConnectionEnv() *MySQLConnectionEnv {
 
 func NewMySQLSlaveConnectionEnv() *MySQLConnectionEnv {
 	return &MySQLConnectionEnv{
-		Host:     getEnv("MYSQL_HOST2", "127.0.0.1"),
+		Host:     getEnv("MYSQL_HOST_2", "127.0.0.1"),
 		Port:     getEnv("MYSQL_PORT", "3306"),
 		User:     getEnv("MYSQL_USER", "isucon"),
 		DBName:   getEnv("MYSQL_DBNAME", "isuumo"),
