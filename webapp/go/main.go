@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -27,6 +28,11 @@ var db *sqlx.DB
 var mySQLConnectionData *MySQLConnectionEnv
 var chairSearchCondition ChairSearchCondition
 var estateSearchCondition EstateSearchCondition
+
+var (
+	LowPricedChair    ChairListResponse
+	LowPricedChairMux = sync.RWMutex{}
+)
 
 type InitializeResponse struct {
 	Language string `json:"language"`
@@ -308,6 +314,18 @@ func initialize(c echo.Context) error {
 		}
 	}
 
+	// LowPricedChairをオンメモリに
+	LowPricedChairMux.Lock()
+	defer LowPricedChairMux.Unlock()
+
+	LowPricedChair := ChairListResponse{}
+	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
+	err := db.Select(&LowPricedChair, query, Limit)
+	if err != nil {
+		c.Logger().Errorf("LowPricedChairをオンメモリに Initialize script error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
 	})
@@ -579,6 +597,17 @@ func buyChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	memorychair := getLowPricedChair(c)
+	LowPricedChairMux.Lock()
+	// TODO:該当chairを元にメモリのLowPricedChairを更新したい
+	for _, mchair := memorychair {
+		// ↑syntax error: _, mchair := memorychair used as valuego
+		if memorychair.Price > chair.Price {
+			memorychair = chair
+		}
+	}
+	LowPricedChairMux.RUnlock()
+
 	return c.NoContent(http.StatusOK)
 }
 
@@ -587,19 +616,14 @@ func getChairSearchCondition(c echo.Context) error {
 }
 
 func getLowPricedChair(c echo.Context) error {
-	var chairs []Chair
-	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
-	err := db.Select(&chairs, query, Limit)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			c.Logger().Error("getLowPricedChair not found")
-			return c.JSON(http.StatusOK, ChairListResponse{[]Chair{}})
-		}
-		c.Logger().Errorf("getLowPricedChair DB execution error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
+	// オンメモリにしたLowPricedChairから取ってくるようにする
+	var chairs = ChairListResponse{}
 
-	return c.JSON(http.StatusOK, ChairListResponse{Chairs: chairs})
+	LowPricedChairMux.RLock()
+	chairs = LowPricedChair
+	LowPricedChairMux.RUnlock()
+
+	return c.JSON(http.StatusOK, chairs)
 }
 
 func getEstateDetail(c echo.Context) error {
