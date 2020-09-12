@@ -19,3 +19,6 @@ start-services:
 truncate-logs:
 	sudo truncate --size 0 /var/log/nginx/access.log
 	sudo truncate --size 0 /var/log/nginx/error.log
+
+kataribe:
+	cd ../ && sudo cat /var/log/nginx/access.log | ./kataribe
