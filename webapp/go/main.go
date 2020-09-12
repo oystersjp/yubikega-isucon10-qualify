@@ -841,7 +841,7 @@ func searchEstates(c echo.Context) error {
 	// page = 1
 
 	estateMapMux.RLock()
-	res.Estates = estateMap[searchCondition][page : page*perPage]
+	res.Estates = estateMap[searchCondition][page*perPage : page*perPage+perPage]
 	estateMapMux.RUnlock()
 
 	return c.JSON(http.StatusOK, res)
