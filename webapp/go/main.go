@@ -831,7 +831,6 @@ func searchEstates(c echo.Context) error {
 	}
 
 	estateMapMux.Lock()
-	// cannot use estates (type []Estate) as type *Estate in assignmentgo
 	estateMap[searchCondition] = estates
 	estateMapMux.Unlock()
 	// ここでestateMap[検索条件]ができた
@@ -841,7 +840,6 @@ func searchEstates(c echo.Context) error {
 
 	// このクエリをページ毎に呼ばないようにしたい
 	estateMapMux.RLock()
-	// cannot slice estateMap[searchCondition] (type *Estate)go
 	res.Estates = estateMap[searchCondition][page : page*perPage]
 	estateMapMux.RUnlock()
 
