@@ -30,8 +30,8 @@ var chairSearchCondition ChairSearchCondition
 var estateSearchCondition EstateSearchCondition
 
 var (
-	LowPricedChair    ChairListResponse
-	LowPricedChairMux = sync.RWMutex{}
+	LowPricedChairs = []Chair
+	LowPricedChairsMux = sync.RWMutex{}
 )
 
 type InitializeResponse struct {
@@ -314,17 +314,7 @@ func initialize(c echo.Context) error {
 		}
 	}
 
-	// LowPricedChairをオンメモリに
-	LowPricedChairMux.Lock()
-	defer LowPricedChairMux.Unlock()
-
-	LowPricedChair := ChairListResponse{}
-	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
-	err := db.Select(&LowPricedChair, query, Limit)
-	if err != nil {
-		c.Logger().Errorf("LowPricedChairをオンメモリに Initialize script error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
+	updateGetLowPricedChair(c)
 
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
@@ -548,6 +538,20 @@ func searchChairs(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+func updateGetLowPricedChair(c echo.Context) error {
+	// LowPricedChairsをオンメモリに
+	LowPricedChairsMux.Lock()
+	defer LowPricedChairsMux.Unlock()
+
+	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
+	err := db.Select(&LowPricedChairs, query, Limit)
+	if err != nil {
+		c.Logger().Errorf("LowPricedChairsをオンメモリに Initialize script error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	return LowPricedChairs
+}
+
 func buyChair(c echo.Context) error {
 	m := echo.Map{}
 	if err := c.Bind(&m); err != nil {
@@ -597,16 +601,8 @@ func buyChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	memorychair := getLowPricedChair(c)
-	LowPricedChairMux.Lock()
 	// TODO:該当chairを元にメモリのLowPricedChairを更新したい
-	for _, mchair := memorychair {
-		// ↑syntax error: _, mchair := memorychair used as valuego
-		if memorychair.Price > chair.Price {
-			memorychair = chair
-		}
-	}
-	LowPricedChairMux.RUnlock()
+	updateGetLowPricedChair(c)
 
 	return c.NoContent(http.StatusOK)
 }
@@ -619,9 +615,9 @@ func getLowPricedChair(c echo.Context) error {
 	// オンメモリにしたLowPricedChairから取ってくるようにする
 	var chairs = ChairListResponse{}
 
-	LowPricedChairMux.RLock()
-	chairs = LowPricedChair
-	LowPricedChairMux.RUnlock()
+	LowPricedChairsMux.RLock()
+	chairs = LowPricedChairs
+	LowPricedChairsMux.RUnlock()
 
 	return c.JSON(http.StatusOK, chairs)
 }
