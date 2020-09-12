@@ -289,9 +289,8 @@ func main() {
 	}
 	db.SetMaxOpenConns(10)
 	defer db.Close()
-
-	mySQLConnectionData = NewMySQLSlaveConnectionEnv()
-	dbSlave, err = mySQLConnectionData.ConnectDB()
+	
+	dbSlave, err = NewMySQLSlaveConnectionEnv().ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
 	}
