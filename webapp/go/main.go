@@ -283,6 +283,7 @@ func main() {
 		e.Logger.Fatalf("DB connection failed : %v", err)
 	}
 	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(10)
 	defer db.Close()
 
 	// Start server
@@ -296,6 +297,7 @@ func initialize(c echo.Context) error {
 		filepath.Join(sqlDir, "0_Schema.sql"),
 		filepath.Join(sqlDir, "1_DummyEstateData.sql"),
 		filepath.Join(sqlDir, "2_DummyChairData.sql"),
+		filepath.Join(sqlDir, "3_Additional.sql"),
 	}
 
 	for _, p := range paths {
