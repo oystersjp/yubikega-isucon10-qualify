@@ -296,6 +296,7 @@ func main() {
 		e.Logger.Fatalf("DB connection failed : %v", err)
 	}
 	dbSlave.SetMaxOpenConns(10)
+	dbSlave.SetMaxIdleConns(10)
 	defer dbSlave.Close()
 
 	// Start server
