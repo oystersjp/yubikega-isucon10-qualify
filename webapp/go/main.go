@@ -31,7 +31,7 @@ var chairSearchCondition ChairSearchCondition
 var estateSearchCondition EstateSearchCondition
 
 var (
-	estateMap    = make(map[string]*Estate)
+	estateMap    = make(map[string][]Estate)
 	estateMapMux = sync.RWMutex{}
 )
 
@@ -715,6 +715,9 @@ func postEstate(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	// 物件検索mapを初期化
+	emptymap := make(map[string][]Estate)
+	estateMap = emptymap
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -810,7 +813,7 @@ func searchEstates(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	estateMap = make(map[string]*Estate)
+	estateMap = make(map[string][]Estate)
 	estates := []Estate{}
 	// mapに検索結果をぶち込む
 	// クエリ
