@@ -821,6 +821,7 @@ func searchEstates(c echo.Context) error {
 	estates := []Estate{}
 	// mapに検索結果をぶち込む
 	// クエリ
+	params = append(params, perPage*4, 0)
 	if estateMap[searchCondition] == nil {
 		err = dbSlave.Select(&estates, searchQuery+searchCondition+limitOffset, params...)
 		if err != nil {
