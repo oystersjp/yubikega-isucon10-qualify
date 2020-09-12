@@ -969,9 +969,8 @@ func naikaku(coordinate Coordinate, coordinates []Coordinate) bool {
 	return false
 }
 
-// °単位の角度を0～360の範囲に収める
 func getDegree(deg float64) float64 {
-	 return deg * (180 / math.Pi)
+	 return deg / math.Pi * 180
 }
 func postEstateRequestDocument(c echo.Context) error {
 	m := echo.Map{}
