@@ -403,6 +403,14 @@ func postChair(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	// 該当chairを元にメモリのLowPricedChairを更新したい
+	err = updateLowPricedChair(c)
+	if err != nil {
+		c.Echo().Logger.Errorf("updateLowPricedChair failed : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -600,7 +608,7 @@ func buyChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// TODO:該当chairを元にメモリのLowPricedChairを更新したい
+	// 該当chairを元にメモリのLowPricedChairを更新したい
 	err = updateLowPricedChair(c)
 	if err != nil {
 		c.Echo().Logger.Errorf("updateLowPricedChair failed : %v", err)
