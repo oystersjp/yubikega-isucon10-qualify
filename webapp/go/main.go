@@ -816,13 +816,15 @@ func searchEstates(c echo.Context) error {
 	estates := []Estate{}
 	// mapに検索結果をぶち込む
 	// クエリ
-	err = dbSlave.Select(&estates, searchQuery+searchCondition+limitOffset, params...)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return c.JSON(http.StatusOK, EstateSearchResponse{Count: 0, Estates: []Estate{}})
+	if estateMap[searchCondition] == nil {
+		err = dbSlave.Select(&estates, searchQuery+searchCondition+limitOffset, params...)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return c.JSON(http.StatusOK, EstateSearchResponse{Count: 0, Estates: []Estate{}})
+			}
+			c.Logger().Errorf("searchEstates DB execution error : %v", err)
+			return c.NoContent(http.StatusInternalServerError)
 		}
-		c.Logger().Errorf("searchEstates DB execution error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	estateMapMux.Lock()
@@ -833,7 +835,6 @@ func searchEstates(c echo.Context) error {
 	// perPage = 25
 	// page = 1
 
-	// このクエリをページ毎に呼ばないようにしたい
 	estateMapMux.RLock()
 	res.Estates = estateMap[searchCondition][page : page*perPage]
 	estateMapMux.RUnlock()
