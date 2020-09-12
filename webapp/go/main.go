@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -904,8 +903,11 @@ func searchEstateNazotte(c echo.Context) error {
 	estatesInPolygon := []Estate{}
 
 	for _, estate := range estatesInBoundingBox {
-
-		if naikaku(Coordinate{Longitude: estate.Longitude,Latitude: estate.Latitude}, coordinates.Coordinates) {
+		co := Coordinate {
+			Longitude: estate.Longitude,
+			Latitude: estate.Latitude,
+		}
+		if !InMap(co, coordinates.Coordinates) {
 			continue
 		}
 		estatesInPolygon = append(estatesInPolygon, estate)
@@ -937,40 +939,24 @@ func searchEstateNazotte(c echo.Context) error {
 	return c.JSON(http.StatusOK, re)
 }
 
-func naikaku(coordinate Coordinate, coordinates []Coordinate) bool {
-	var deg float64 = 0
-	var p1x float64 = coordinate.Latitude
-	var p1y float64 = coordinate.Longitude
-	for i, co := range coordinates {
-		var p2x = co.Latitude
-		var p2y = co.Longitude
-		var p3x = coordinates[0].Latitude
-		var p3y = coordinates[0].Longitude
-
-		if i < len(coordinates) - 1 {
-			p3x = coordinates[i + 1].Latitude
-			p3y = coordinates[i + 1].Longitude
-		}
-
-		var ax = p2x - p1x
-		var ay = p2y - p1y
-		var bx = p3x - p1x
-		var by = p3y - p1y
-
-		var cos = (ax * bx + ay * by) / (math.Sqrt(ax * ax + ay * ay) * math.Sqrt(bx * bx + by * by))
-		deg += getDegree(math.Acos(cos))
-	}
-
-	if math.Round(deg) == 360 {
-		return true
-	} else {
+func InMap(pt Coordinate, pg []Coordinate) bool {
+	if len(pg) < 3 {
 		return false
 	}
-	return false
+	a := pg[0]
+	in := rayIntersectsSegment(pt, pg[len(pg)-1], a)
+	for _, b := range pg[1:] {
+		if rayIntersectsSegment(pt, a, b) {
+			in = !in
+		}
+		a = b
+	}
+	return in
 }
 
-func getDegree(deg float64) float64 {
-	 return deg / math.Pi * 180
+func rayIntersectsSegment(p, a, b Coordinate) bool {
+	return (a.Latitude > p.Latitude) != (b.Latitude > p.Latitude) &&
+		p.Longitude < (b.Longitude-a.Longitude)*(p.Latitude-a.Latitude)/(b.Latitude-a.Latitude)+a.Longitude
 }
 func postEstateRequestDocument(c echo.Context) error {
 	m := echo.Map{}
