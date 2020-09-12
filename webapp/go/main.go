@@ -947,9 +947,9 @@ func naikaku(coordinate Coordinate, coordinates []Coordinate) bool {
 		var p3x = coordinates[0].Latitude
 		var p3y = coordinates[0].Longitude
 
-		if i < len(coordinates) {
-			p3x = coordinates[i + 1].Latitude;
-			p3y = coordinates[i + 1].Longitude;
+		if i < len(coordinates) - 1 {
+			p3x = coordinates[i + 1].Latitude
+			p3y = coordinates[i + 1].Longitude
 		}
 
 		var ax = p2x - p1x
