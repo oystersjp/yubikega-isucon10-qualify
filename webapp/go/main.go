@@ -972,9 +972,9 @@ func naikaku(coordinate Coordinate, coordinates []Coordinate) bool {
 // °単位の角度を0～360の範囲に収める
 func getDegree(deg float64) float64 {
 	// 360で割ったあまりを求める
-	var maru  = 360
+	var maru  = 360 * 1000
 	// マイナスだったら360を足す
-	if 0 > int(deg) % maru {
+	if 0 > int(deg * 1000) % maru {
 		deg += 360.0
 	}
 
