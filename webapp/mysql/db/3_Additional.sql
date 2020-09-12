@@ -8,4 +8,5 @@ alter table estate add index (rent, popularity, id);
 alter table estate add index (rent);
 alter table chair add index (price);
 
-alter table estate add index (latitude,longitude);
+alter table estate add index (latitude);
+alter table estate add index (longitude);
