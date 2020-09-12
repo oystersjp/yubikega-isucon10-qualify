@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -28,6 +29,11 @@ var dbSlave *sqlx.DB
 var mySQLConnectionData *MySQLConnectionEnv
 var chairSearchCondition ChairSearchCondition
 var estateSearchCondition EstateSearchCondition
+
+var (
+	estateMap    = make(map[string]*Estate)
+	estateMapMux = sync.RWMutex{}
+)
 
 type InitializeResponse struct {
 	Language string `json:"language"`
@@ -295,7 +301,7 @@ func main() {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
 	defer db.Close()
-	
+
 	dbSlave, err = NewMySQLSlaveConnectionEnv().ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
@@ -802,14 +808,17 @@ func searchEstates(c echo.Context) error {
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
+	// カウントするクエリ
 	err = dbSlave.Get(&res.Count, countQuery+searchCondition, params...)
 	if err != nil {
 		c.Logger().Errorf("searchEstates DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	estateMap = make(map[string]*Estate)
 	estates := []Estate{}
-	params = append(params, perPage, page*perPage)
+	// mapに検索結果をぶち込む
+	// クエリ
 	err = dbSlave.Select(&estates, searchQuery+searchCondition+limitOffset, params...)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -819,7 +828,22 @@ func searchEstates(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res.Estates = estates
+	estateMapMux.Lock()
+	for _, e := range estates {
+		// cannot use conditions (type []string) as type string in map indexgo
+		estateMap[conditions] = append(estateMap[conditions], e)
+	}
+	estateMapMux.UnLock()
+	// ここでestateMap[検索条件]ができた
+
+	// perPage = 25
+	// page = 1
+
+	// このクエリをページ毎に呼ばないようにしたい
+	estateMapMux.RLock()
+	//
+	res.Estates = estateMap[conditions][page : page*perPage]
+	estateMapMux.RUnLock()
 
 	return c.JSON(http.StatusOK, res)
 }
