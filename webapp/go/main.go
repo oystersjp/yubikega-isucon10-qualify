@@ -289,6 +289,10 @@ func main() {
 	// Start server
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_PORT", "1323"))
 	e.Logger.Fatal(e.Start(serverPort))
+	err = updateLowPricedChairs()
+	if err != nil {
+		panic("panic")
+	}
 }
 
 func initialize(c echo.Context) error {
@@ -316,9 +320,9 @@ func initialize(c echo.Context) error {
 		}
 	}
 
-	err := updateLowPricedChair(c)
+	err := updateLowPricedChairs()
 	if err != nil {
-		c.Echo().Logger.Errorf("updateLowPricedChair failed when initializing: %v", err)
+		c.Echo().Logger.Errorf("updateLowPricedChairs failed when initializing: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -407,9 +411,9 @@ func postChair(c echo.Context) error {
 	}
 
 	// 該当chairを元にメモリのLowPricedChairを更新したい
-	err = updateLowPricedChair(c)
+	err = updateLowPricedChairs()
 	if err != nil {
-		c.Echo().Logger.Errorf("updateLowPricedChair failed : %v", err)
+		c.Echo().Logger.Errorf("updateLowPricedChairs failed : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -552,7 +556,7 @@ func searchChairs(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func updateLowPricedChair(c echo.Context) error {
+func updateLowPricedChairs() error {
 	// LowPricedChairsをオンメモリに
 	LowPricedChairsMux.Lock()
 	defer LowPricedChairsMux.Unlock()
@@ -611,9 +615,9 @@ func buyChair(c echo.Context) error {
 	}
 
 	// 該当chairを元にメモリのLowPricedChairを更新したい
-	err = updateLowPricedChair(c)
+	err = updateLowPricedChairs()
 	if err != nil {
-		c.Echo().Logger.Errorf("updateLowPricedChair failed : %v", err)
+		c.Echo().Logger.Errorf("updateLowPricedChairs failed : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
