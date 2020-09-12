@@ -286,13 +286,14 @@ func main() {
 	db.SetMaxIdleConns(10)
 	defer db.Close()
 
-	// Start server
-	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_PORT", "1323"))
-	e.Logger.Fatal(e.Start(serverPort))
 	err = updateLowPricedChairs()
 	if err != nil {
 		panic("panic")
 	}
+
+	// Start server
+	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_PORT", "1323"))
+	e.Logger.Fatal(e.Start(serverPort))
 }
 
 func initialize(c echo.Context) error {
