@@ -947,7 +947,7 @@ func naikaku(coordinate Coordinate, coordinates []Coordinate) bool {
 		var p3x = coordinates[0].Latitude
 		var p3y = coordinates[0].Longitude
 
-		if (i < len(coordinates)) {
+		if i < len(coordinates) {
 			p3x = coordinates[i + 1].Latitude;
 			p3y = coordinates[i + 1].Longitude;
 		}
@@ -962,9 +962,9 @@ func naikaku(coordinate Coordinate, coordinates []Coordinate) bool {
 	}
 
 	if math.Round(deg) == 360 {
-		return true;
+		return true
 	} else {
-		return false;
+		return false
 	}
 	return false
 }
@@ -972,10 +972,9 @@ func naikaku(coordinate Coordinate, coordinates []Coordinate) bool {
 // °単位の角度を0～360の範囲に収める
 func getDegree(deg float64) float64 {
 	// 360で割ったあまりを求める
-	deg = int(deg) % 360.0
-
+	var maru  = 360
 	// マイナスだったら360を足す
-	if 0.0 > deg {
+	if 0 > int(deg) % maru {
 		deg += 360.0
 	}
 
