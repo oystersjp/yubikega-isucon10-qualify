@@ -314,7 +314,11 @@ func initialize(c echo.Context) error {
 		}
 	}
 
-	updateGetLowPricedChair(c)
+	err := updateLowPricedChair(c)
+	if err != nil {
+		c.Echo().Logger.Errorf("updateLowPricedChair failed when initializing: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
@@ -538,18 +542,13 @@ func searchChairs(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func updateGetLowPricedChair(c echo.Context) error {
+func updateLowPricedChair(c echo.Context) error {
 	// LowPricedChairsをオンメモリに
 	LowPricedChairsMux.Lock()
 	defer LowPricedChairsMux.Unlock()
 
 	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
-	err := db.Select(&LowPricedChairs, query, Limit)
-	if err != nil {
-		c.Logger().Errorf("LowPricedChairsをオンメモリに Initialize script error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	return nil
+	return db.Select(&LowPricedChairs, query, Limit)
 }
 
 func buyChair(c echo.Context) error {
@@ -602,7 +601,11 @@ func buyChair(c echo.Context) error {
 	}
 
 	// TODO:該当chairを元にメモリのLowPricedChairを更新したい
-	updateGetLowPricedChair(c)
+	err = updateLowPricedChair(c)
+	if err != nil {
+		c.Echo().Logger.Errorf("updateLowPricedChair failed : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
 	return c.NoContent(http.StatusOK)
 }
@@ -616,7 +619,7 @@ func getLowPricedChair(c echo.Context) error {
 	LowPricedChairsMux.RLock()
 	defer LowPricedChairsMux.RUnlock()
 
-	return c.JSON(http.StatusOK, LowPricedChairs)
+	return c.JSON(http.StatusOK, ChairListResponse{Chairs: LowPricedChairs})
 }
 
 func getEstateDetail(c echo.Context) error {
