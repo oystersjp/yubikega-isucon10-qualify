@@ -716,8 +716,7 @@ func postEstate(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	// 物件検索mapを初期化
-	emptymap := make(map[string][]Estate)
-	estateMap = emptymap
+	estateMap = make(map[string][]Estate)
 	return c.NoContent(http.StatusCreated)
 }
 
