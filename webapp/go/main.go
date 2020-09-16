@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -28,6 +29,11 @@ var dbSlave *sqlx.DB
 var mySQLConnectionData *MySQLConnectionEnv
 var chairSearchCondition ChairSearchCondition
 var estateSearchCondition EstateSearchCondition
+
+var (
+	LowPricedChairs    []Chair
+	LowPricedChairsMux = sync.RWMutex{}
+)
 
 type InitializeResponse struct {
 	Language string `json:"language"`
@@ -304,6 +310,11 @@ func main() {
 	dbSlave.SetMaxIdleConns(10)
 	defer dbSlave.Close()
 
+	err = updateLowPricedChairs()
+	if err != nil {
+		panic("panic")
+	}
+
 	// Start server
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_PORT", "1323"))
 	e.Logger.Fatal(e.Start(serverPort))
@@ -332,6 +343,12 @@ func initialize(c echo.Context) error {
 			c.Logger().Errorf("Initialize script error : %v", err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
+	}
+
+	err := updateLowPricedChairs()
+	if err != nil {
+		c.Echo().Logger.Errorf("updateLowPricedChairs failed when initializing: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, InitializeResponse{
@@ -417,6 +434,14 @@ func postChair(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	// 該当chairを元にメモリのLowPricedChairを更新したい
+	err = updateLowPricedChairs()
+	if err != nil {
+		c.Echo().Logger.Errorf("updateLowPricedChairs failed : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -556,6 +581,15 @@ func searchChairs(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+func updateLowPricedChairs() error {
+	// LowPricedChairsをオンメモリに
+	LowPricedChairsMux.Lock()
+	defer LowPricedChairsMux.Unlock()
+
+	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
+	return db.Select(&LowPricedChairs, query, Limit)
+}
+
 func buyChair(c echo.Context) error {
 	m := echo.Map{}
 	if err := c.Bind(&m); err != nil {
@@ -605,6 +639,13 @@ func buyChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	// 該当chairを元にメモリのLowPricedChairを更新したい
+	err = updateLowPricedChairs()
+	if err != nil {
+		c.Echo().Logger.Errorf("updateLowPricedChairs failed : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	return c.NoContent(http.StatusOK)
 }
 
@@ -613,19 +654,11 @@ func getChairSearchCondition(c echo.Context) error {
 }
 
 func getLowPricedChair(c echo.Context) error {
-	var chairs []Chair
-	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
-	err := db.Select(&chairs, query, Limit)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			c.Logger().Error("getLowPricedChair not found")
-			return c.JSON(http.StatusOK, ChairListResponse{[]Chair{}})
-		}
-		c.Logger().Errorf("getLowPricedChair DB execution error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
+	// オンメモリにしたLowPricedChairから取ってくるようにする
+	LowPricedChairsMux.RLock()
+	defer LowPricedChairsMux.RUnlock()
 
-	return c.JSON(http.StatusOK, ChairListResponse{Chairs: chairs})
+	return c.JSON(http.StatusOK, ChairListResponse{Chairs: LowPricedChairs})
 }
 
 func getEstateDetail(c echo.Context) error {
