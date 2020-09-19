@@ -911,20 +911,6 @@ func searchEstateNazotte(c echo.Context) error {
 			continue
 		}
 		estatesInPolygon = append(estatesInPolygon, estate)
-		////validatedEstate := Estate{}
-		////point := fmt.Sprintf("'POINT(%f %f)'", estate.Latitude, estate.Longitude)
-		////query := fmt.Sprintf(`SELECT * FROM estate WHERE id = ? AND ST_Contains(ST_PolygonFromText(%s), ST_GeomFromText(%s))`, coordinates.coordinatesToText(), point)
-		////err = db.Get(&validatedEstate, query, estate.ID)
-		//if err != nil {
-		//	if err == sql.ErrNoRows {
-		//		continue
-		//	} else {
-		//		c.Echo().Logger.Errorf("db access is failed on executing validate if estate is in polygon : %v", err)
-		//		return c.NoContent(http.StatusInternalServerError)
-		//	}
-		//} else {
-		//	estatesInPolygon = append(estatesInPolygon, estate)
-		//}
 	}
 
 	var re EstateSearchResponse
@@ -939,14 +925,16 @@ func searchEstateNazotte(c echo.Context) error {
 	return c.JSON(http.StatusOK, re)
 }
 
-func InMap(pt Coordinate, pg []Coordinate) bool {
-	if len(pg) < 3 {
+func InMap(p Coordinate, coordinates []Coordinate) bool {
+	// 三点ない場合に図形にならないので内側には何も存在しない
+	if len(coordinates) < 3 {
 		return false
 	}
-	a := pg[0]
-	in := rayIntersectsSegment(pt, pg[len(pg)-1], a)
-	for _, b := range pg[1:] {
-		if rayIntersectsSegment(pt, a, b) {
+	a := coordinates[0]
+	in := rayIntersectsSegment(p, coordinates[len(coordinates)-1], a)
+	for _, b := range coordinates[1:] {
+		// 奇数回交差するようだったら内側に存在する
+		if rayIntersectsSegment(p, a, b) {
 			in = !in
 		}
 		a = b
@@ -955,8 +943,13 @@ func InMap(pt Coordinate, pg []Coordinate) bool {
 }
 
 func rayIntersectsSegment(p, a, b Coordinate) bool {
-	return (a.Latitude > p.Latitude) != (b.Latitude > p.Latitude) &&
-		p.Longitude < (b.Longitude-a.Longitude)*(p.Latitude-a.Latitude)/(b.Latitude-a.Latitude)+a.Longitude
+	// 各点の内側にあることを検証
+	if !((a.Latitude > p.Latitude) != (b.Latitude > p.Latitude)) {
+		return false
+	}
+	// pは右方向のベクトルを持つとする
+	// 線分ABとベクトルPの交点の計算をする
+	return p.Longitude < (b.Longitude-a.Longitude)*(p.Latitude-a.Latitude)/(b.Latitude-a.Latitude)+a.Longitude
 }
 func postEstateRequestDocument(c echo.Context) error {
 	m := echo.Map{}
