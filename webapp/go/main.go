@@ -36,19 +36,19 @@ type InitializeResponse struct {
 }
 
 type Chair struct {
-	ID          int64  `dbChair:"id" json:"id"`
-	Name        string `dbChair:"name" json:"name"`
-	Description string `dbChair:"description" json:"description"`
-	Thumbnail   string `dbChair:"thumbnail" json:"thumbnail"`
-	Price       int64  `dbChair:"price" json:"price"`
-	Height      int64  `dbChair:"height" json:"height"`
-	Width       int64  `dbChair:"width" json:"width"`
-	Depth       int64  `dbChair:"depth" json:"depth"`
-	Color       string `dbChair:"color" json:"color"`
-	Features    string `dbChair:"features" json:"features"`
-	Kind        string `dbChair:"kind" json:"kind"`
-	Popularity  int64  `dbChair:"popularity" json:"-"`
-	Stock       int64  `dbChair:"stock" json:"-"`
+	ID          int64  `db:"id" json:"id"`
+	Name        string `db:"name" json:"name"`
+	Description string `db:"description" json:"description"`
+	Thumbnail   string `db:"thumbnail" json:"thumbnail"`
+	Price       int64  `db:"price" json:"price"`
+	Height      int64  `db:"height" json:"height"`
+	Width       int64  `db:"width" json:"width"`
+	Depth       int64  `db:"depth" json:"depth"`
+	Color       string `db:"color" json:"color"`
+	Features    string `db:"features" json:"features"`
+	Kind        string `db:"kind" json:"kind"`
+	Popularity  int64  `db:"popularity" json:"-"`
+	Stock       int64  `db:"stock" json:"-"`
 }
 
 type ChairSearchResponse struct {
@@ -67,18 +67,18 @@ type Coodinate struct {
 
 //Estate 物件
 type Estate struct {
-	ID          int64   `dbChair:"id" json:"id"`
-	Thumbnail   string  `dbChair:"thumbnail" json:"thumbnail"`
-	Name        string  `dbChair:"name" json:"name"`
-	Description string  `dbChair:"description" json:"description"`
-	Latitude    float64 `dbChair:"latitude" json:"latitude"`
-	Longitude   float64 `dbChair:"longitude" json:"longitude"`
-	Address     string  `dbChair:"address" json:"address"`
-	Rent        int64   `dbChair:"rent" json:"rent"`
-	DoorHeight  int64   `dbChair:"door_height" json:"doorHeight"`
-	DoorWidth   int64   `dbChair:"door_width" json:"doorWidth"`
-	Features    string  `dbChair:"features" json:"features"`
-	Popularity  int64   `dbChair:"popularity" json:"-"`
+	ID          int64   `db:"id" json:"id"`
+	Thumbnail   string  `db:"thumbnail" json:"thumbnail"`
+	Name        string  `db:"name" json:"name"`
+	Description string  `db:"description" json:"description"`
+	Latitude    float64 `db:"latitude" json:"latitude"`
+	Longitude   float64 `db:"longitude" json:"longitude"`
+	Address     string  `db:"address" json:"address"`
+	Rent        int64   `db:"rent" json:"rent"`
+	DoorHeight  int64   `db:"door_height" json:"doorHeight"`
+	DoorWidth   int64   `db:"door_width" json:"doorWidth"`
+	Features    string  `db:"features" json:"features"`
+	Popularity  int64   `db:"popularity" json:"-"`
 }
 
 //EstateSearchResponse estate/searchへのレスポンスの形式
@@ -313,7 +313,7 @@ func main() {
 }
 
 func initialize(c echo.Context) error {
-	sqlDir := filepath.Join("..", "mysql", "dbChair")
+	sqlDir := filepath.Join("..", "mysql", "db")
 	pathsEstate := []string{
 		filepath.Join(sqlDir, "0_Schema.sql"),
 		filepath.Join(sqlDir, "1_DummyEstateData.sql"),
@@ -340,7 +340,6 @@ func initialize(c echo.Context) error {
 				sqlFile,
 			)
 			if err := exec.Command("bash", "-c", cmdStr).Run(); err != nil {
-				c.Logger().Errorf("Initialize script error : %v", err)
 				return err
 			}
 		}
@@ -361,7 +360,6 @@ func initialize(c echo.Context) error {
 				sqlFile,
 			)
 			if err := exec.Command("bash", "-c", cmdStr).Run(); err != nil {
-				c.Logger().Errorf("Initialize script error : %v", err)
 				return err
 			}
 		}
