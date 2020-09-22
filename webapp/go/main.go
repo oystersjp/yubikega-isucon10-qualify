@@ -1009,10 +1009,16 @@ func searchEstateNazotte(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	b := coordinates.getBoundingBox()
-	estatesInBoundingBox := []Estate{}
+	type MiniEstate struct {
+		ID             int64   `db:"id" json:"id"`
+		Latitude       float64 `db:"latitude" json:"latitude"`
+		Longitude      float64 `db:"longitude" json:"longitude"`
+	}
 
-	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity_desc ASC, id ASC`
+	b := coordinates.getBoundingBox()
+	var estatesInBoundingBox []MiniEstate
+
+	query := `SELECT id, latitude, longitude FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity_desc ASC, id ASC`
 	err = dbEstate.Select(&estatesInBoundingBox, query, b.BottomRightCorner.Latitude, b.TopLeftCorner.Latitude, b.BottomRightCorner.Longitude, b.TopLeftCorner.Longitude)
 
 	if err == sql.ErrNoRows {
@@ -1023,7 +1029,7 @@ func searchEstateNazotte(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	estatesInPolygon := []Estate{}
+	var estatesIdsInPolygon []int64
 
 	for _, estate := range estatesInBoundingBox {
 		co := Coordinate{
@@ -1033,15 +1039,30 @@ func searchEstateNazotte(c echo.Context) error {
 		if !InMap(co, coordinates.Coordinates) {
 			continue
 		}
-		estatesInPolygon = append(estatesInPolygon, estate)
+		estatesIdsInPolygon = append(estatesIdsInPolygon, estate.ID)
 
-		if len(estatesInPolygon) >= NazotteLimit {
+		if len(estatesIdsInPolygon) >= NazotteLimit {
 			break
 		}
 	}
 
+	if len(estatesIdsInPolygon) == 0 {
+		return c.JSON(http.StatusOK, EstateSearchResponse{Count: 0, Estates: []Estate{}})
+	}
+
+	var filtered []Estate
+	q, params, err := sqlx.In(`SELECT * FROM estate WHERE id in (?) ORDER BY popularity_desc ASC, id ASC`, estatesIdsInPolygon)
+	if err != nil {
+		c.Echo().Logger.Errorf("database execution error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if err := dbEstate.Select(&filtered, q, params...); err != nil {
+		c.Echo().Logger.Errorf("database execution error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	var re EstateSearchResponse
-	re.Estates = estatesInPolygon
+	re.Estates = filtered
 	re.Count = int64(len(re.Estates))
 
 	return c.JSON(http.StatusOK, re)
