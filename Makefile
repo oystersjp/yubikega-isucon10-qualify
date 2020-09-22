@@ -8,10 +8,13 @@ build:
 stop-services:
 	sudo systemctl stop nginx
 	sudo systemctl stop isuumo.go.service
-	sudo systemctl stop mysql
+	ssh isucon@10.160.15.102 sudo systemctl stop mysql
+	ssh isucon@10.160.15.103 sudo systemctl stop mysql
 
 start-services:
-	sudo systemctl start mysql
+	ssh isucon@10.160.15.103 sudo systemctl start mysql
+	sleep 5
+	ssh isucon@10.160.15.102 sudo systemctl start mysql
 	sleep 5
 	sudo systemctl start isuumo.go.service
 	sudo systemctl start nginx
