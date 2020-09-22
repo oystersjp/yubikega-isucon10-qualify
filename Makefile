@@ -1,4 +1,4 @@
-.PHONY: gogo build stop-services start-services truncate-logs
+.PHONY: gogo build stop-services start-services truncate-logs bench
 
 gogo: stop-services build truncate-logs start-services
 
@@ -24,3 +24,6 @@ truncate-logs:
 
 kataribe:
 	cd ../ && sudo cat /var/log/nginx/access.log | ./kataribe
+
+bench:
+	cd bench && ./bench -target-url http://localhost:80 && cd ../
