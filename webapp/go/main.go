@@ -690,7 +690,8 @@ func postEstate(c echo.Context) error {
 	var values []string
 	values = nil
 	valueArgs := []interface{}{}
-	q := `INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values `
+
+	q := `INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values %s`
 	for i, row := range records {
 		rm := RecordMapper{Record: row}
 		id := rm.NextInt()
@@ -709,7 +710,6 @@ func postEstate(c echo.Context) error {
 			c.Logger().Errorf("failed to read record: %v", err)
 			return c.NoContent(http.StatusBadRequest)
 		}
-		// values = append(values, fmt.Sprintf("(%v,'%v','%v','%v','%v',%v,%v,%v,%v,%v,'%v',%v)", id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity))
 		values = append(values, "(?,?,?,?,?,?,?,?,?,?,?,?)")
 		valueArgs = append(valueArgs, id)
 		valueArgs = append(valueArgs, name)
@@ -724,9 +724,8 @@ func postEstate(c echo.Context) error {
 		valueArgs = append(valueArgs, features)
 		valueArgs = append(valueArgs, popularity)
 
-		q = fmt.Sprintf(q, strings.Join(values, ","))
-
-		if i%100 == 1 {
+		if i%100 == 0 {
+			q = fmt.Sprintf(q, strings.Join(values, ","))
 			c.Logger().Debug(fmt.Printf(q))
 			_, err = tx.Exec(q, valueArgs...)
 			if err != nil {
@@ -734,10 +733,12 @@ func postEstate(c echo.Context) error {
 				return c.NoContent(http.StatusInternalServerError)
 			}
 			values = nil
-			q = `INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values `
+			valueArgs = nil
+			q = `INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values %s`
 		}
 	}
 	if values != nil {
+		q = fmt.Sprintf(q, strings.Join(values, ","))
 		_, err = tx.Exec(q, valueArgs...)
 		if err != nil {
 			c.Logger().Errorf("failed to insert estate: %v", err)
