@@ -689,7 +689,8 @@ func postEstate(c echo.Context) error {
 
 	var values []string
 	values = nil
-
+	valueArgs := []interface{}{}
+	q := `INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values `
 	for i, row := range records {
 		rm := RecordMapper{Record: row}
 		id := rm.NextInt()
@@ -708,20 +709,36 @@ func postEstate(c echo.Context) error {
 			c.Logger().Errorf("failed to read record: %v", err)
 			return c.NoContent(http.StatusBadRequest)
 		}
-		values = append(values, fmt.Sprintf("(%v,'%v','%v','%v','%v',%v,%v,%v,%v,%v,'%v',%v)", id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity))
+		// values = append(values, fmt.Sprintf("(%v,'%v','%v','%v','%v',%v,%v,%v,%v,%v,'%v',%v)", id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity))
+		values = append(values, "(?,?,?,?,?,?,?,?,?,?,?,?)")
+		valueArgs = append(valueArgs, id)
+		valueArgs = append(valueArgs, name)
+		valueArgs = append(valueArgs, description)
+		valueArgs = append(valueArgs, thumbnail)
+		valueArgs = append(valueArgs, address)
+		valueArgs = append(valueArgs, latitude)
+		valueArgs = append(valueArgs, longitude)
+		valueArgs = append(valueArgs, rent)
+		valueArgs = append(valueArgs, doorHeight)
+		valueArgs = append(valueArgs, doorWidth)
+		valueArgs = append(valueArgs, features)
+		valueArgs = append(valueArgs, popularity)
+
+		q = fmt.Sprintf(q, strings.Join(values, ","))
 
 		if i%100 == 1 {
-			c.Logger().Debug(fmt.Printf("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values %v", strings.Join(values, ",")))
-			_, err = tx.Exec("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values ?", strings.Join(values, ","))
+			c.Logger().Debug(fmt.Printf(q))
+			_, err = tx.Exec(q, valueArgs...)
 			if err != nil {
 				c.Logger().Errorf("failed to insert estate: %v", err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
 			values = nil
+			q = `INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values `
 		}
 	}
 	if values != nil {
-		_, err = tx.Exec("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity)  values ?", strings.Join(values, ","))
+		_, err = tx.Exec(q, valueArgs...)
 		if err != nil {
 			c.Logger().Errorf("failed to insert estate: %v", err)
 			return c.NoContent(http.StatusInternalServerError)
