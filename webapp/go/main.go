@@ -433,7 +433,7 @@ func postChair(c echo.Context) error {
 			q = fmt.Sprintf(q, strings.Join(values, ","))
 			_, err = tx.Exec(q, valueArgs...)
 			if err != nil {
-				c.Logger().Errorf("failed to insert estate: %v", err)
+				c.Logger().Errorf("failed to insert chair: %v", err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
 			values = nil
@@ -446,7 +446,7 @@ func postChair(c echo.Context) error {
 		q = fmt.Sprintf(q, strings.Join(values, ","))
 		_, err = tx.Exec(q, valueArgs...)
 		if err != nil {
-			c.Logger().Errorf("failed to insert estate: %v", err)
+			c.Logger().Errorf("failed to insert chair: %v", err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
