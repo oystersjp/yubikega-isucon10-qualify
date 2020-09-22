@@ -708,10 +708,11 @@ func postEstate(c echo.Context) error {
 			c.Logger().Errorf("failed to read record: %v", err)
 			return c.NoContent(http.StatusBadRequest)
 		}
-		values = append(values, fmt.Sprintf("(%v,%v,%v,%v,%v,%v,%v,%v,%v,%v,%v,%v)", id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity))
+		values = append(values, fmt.Sprintf("(%v,'%v','%v','%v','%v',%v,%v,%v,%v,%v,'%v',%v)", id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity))
 
 		if i%100 == 1 {
-			_, err = tx.Exec("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity)  values ?", strings.Join(values, ","))
+			c.Logger().Debug(fmt.Printf("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values %v", strings.Join(values, ",")))
+			_, err = tx.Exec("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) values ?", strings.Join(values, ","))
 			if err != nil {
 				c.Logger().Errorf("failed to insert estate: %v", err)
 				return c.NoContent(http.StatusInternalServerError)
