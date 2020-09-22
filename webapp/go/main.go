@@ -295,7 +295,7 @@ func main() {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
 	defer db.Close()
-	
+
 	dbSlave, err = NewMySQLSlaveConnectionEnv().ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
@@ -674,44 +674,17 @@ func postEstate(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer f.Close()
-	records, err := csv.NewReader(f).ReadAll()
+	// 1クエリなのでトランザクションを貼る必要がない
+	q := `
+	LOAD DATA LOCAL INFILE ?
+	INTO TABLE estate 
+	FIELDS TERMINATED BY ',' 
+	LINES TERMINATED BY '\n' 
+	IGNORE 1 LINES;
+	`
+	_, err = db.Exec(q, header)
 	if err != nil {
-		c.Logger().Errorf("failed to read csv: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		c.Logger().Errorf("failed to begin tx: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-	for _, row := range records {
-		rm := RecordMapper{Record: row}
-		id := rm.NextInt()
-		name := rm.NextString()
-		description := rm.NextString()
-		thumbnail := rm.NextString()
-		address := rm.NextString()
-		latitude := rm.NextFloat()
-		longitude := rm.NextFloat()
-		rent := rm.NextInt()
-		doorHeight := rm.NextInt()
-		doorWidth := rm.NextInt()
-		features := rm.NextString()
-		popularity := rm.NextInt()
-		if err := rm.Err(); err != nil {
-			c.Logger().Errorf("failed to read record: %v", err)
-			return c.NoContent(http.StatusBadRequest)
-		}
-		_, err := tx.Exec("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity)
-		if err != nil {
-			c.Logger().Errorf("failed to insert estate: %v", err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		c.Logger().Errorf("failed to commit tx: %v", err)
+		c.Logger().Errorf("failed to insert estate: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	return c.NoContent(http.StatusCreated)
@@ -903,9 +876,9 @@ func searchEstateNazotte(c echo.Context) error {
 	estatesInPolygon := []Estate{}
 
 	for _, estate := range estatesInBoundingBox {
-		co := Coordinate {
+		co := Coordinate{
 			Longitude: estate.Longitude,
-			Latitude: estate.Latitude,
+			Latitude:  estate.Latitude,
 		}
 		if !InMap(co, coordinates.Coordinates) {
 			continue
