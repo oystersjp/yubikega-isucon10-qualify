@@ -1046,6 +1046,10 @@ func searchEstateNazotte(c echo.Context) error {
 		}
 	}
 
+	if len(estatesIdsInPolygon) == 0 {
+		return c.JSON(http.StatusOK, EstateSearchResponse{Count: 0, Estates: []Estate{}})
+	}
+
 	var filtered []Estate
 	q, params, err := sqlx.In(`SELECT * FROM estate WHERE id in (?) ORDER BY popularity_desc ASC, id ASC`, estatesIdsInPolygon)
 	if err != nil {
