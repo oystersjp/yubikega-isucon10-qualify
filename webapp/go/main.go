@@ -295,7 +295,7 @@ func main() {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
 	defer db.Close()
-	
+
 	dbSlave, err = NewMySQLSlaveConnectionEnv().ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
@@ -388,7 +388,12 @@ func postChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
-	for _, row := range records {
+
+	var values []string
+	values = nil
+	valueArgs := []interface{}{}
+	q := `INSERT INTO chair(id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock) VALUES %s`
+	for i, row := range records {
 		rm := RecordMapper{Record: row}
 		id := rm.NextInt()
 		name := rm.NextString()
@@ -407,12 +412,45 @@ func postChair(c echo.Context) error {
 			c.Logger().Errorf("failed to read record: %v", err)
 			return c.NoContent(http.StatusBadRequest)
 		}
-		_, err := tx.Exec("INSERT INTO chair(id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock)
+		// _, err := tx.Exec("INSERT INTO chair(id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock)
+		values = append(values, "(?,?,?,?,?,?,?,?,?,?,?,?,?)")
+		valueArgs = append(valueArgs, id)
+		valueArgs = append(valueArgs, name)
+		valueArgs = append(valueArgs, description)
+		valueArgs = append(valueArgs, thumbnail)
+		valueArgs = append(valueArgs, price)
+		valueArgs = append(valueArgs, height)
+		valueArgs = append(valueArgs, width)
+		valueArgs = append(valueArgs, depth)
+		valueArgs = append(valueArgs, color)
+		valueArgs = append(valueArgs, features)
+		valueArgs = append(valueArgs, kind)
+		valueArgs = append(valueArgs, popularity)
+		valueArgs = append(valueArgs, stock)
+
+		if i%100 == 0 {
+			c.Logger().Debug(fmt.Printf(q))
+			q = fmt.Sprintf(q, strings.Join(values, ","))
+			_, err = tx.Exec(q, valueArgs...)
+			if err != nil {
+				c.Logger().Errorf("failed to insert estate: %v", err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			values = nil
+			valueArgs = nil
+			q = `INSERT INTO chair(id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock) VALUES %s`
+		}
+	}
+
+	if values != nil {
+		q = fmt.Sprintf(q, strings.Join(values, ","))
+		_, err = tx.Exec(q, valueArgs...)
 		if err != nil {
-			c.Logger().Errorf("failed to insert chair: %v", err)
+			c.Logger().Errorf("failed to insert estate: %v", err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
+
 	if err := tx.Commit(); err != nil {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -903,9 +941,9 @@ func searchEstateNazotte(c echo.Context) error {
 	estatesInPolygon := []Estate{}
 
 	for _, estate := range estatesInBoundingBox {
-		co := Coordinate {
+		co := Coordinate{
 			Longitude: estate.Longitude,
-			Latitude: estate.Latitude,
+			Latitude:  estate.Latitude,
 		}
 		if !InMap(co, coordinates.Coordinates) {
 			continue
