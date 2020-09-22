@@ -723,7 +723,7 @@ func postEstate(c echo.Context) error {
 		valueArgs = append(valueArgs, features)
 		valueArgs = append(valueArgs, popularity)
 
-		if i%100 == 0 {
+		if i%1000 == 0 {
 			c.Logger().Debug(fmt.Printf(q))
 			q = fmt.Sprintf(q, strings.Join(values, ","))
 			_, err = tx.Exec(q, valueArgs...)
