@@ -3,7 +3,7 @@
 gogo: stop-services build truncate-logs start-services
 
 build:
-	make -C ~/isuumo/webapp/go isuumo
+	make -C webapp/go isuumo
 
 stop-services:
 	sudo systemctl stop nginx
