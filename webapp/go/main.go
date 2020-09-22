@@ -412,7 +412,6 @@ func postChair(c echo.Context) error {
 			c.Logger().Errorf("failed to read record: %v", err)
 			return c.NoContent(http.StatusBadRequest)
 		}
-		// _, err := tx.Exec("INSERT INTO chair(id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock)
 		values = append(values, "(?,?,?,?,?,?,?,?,?,?,?,?,?)")
 		valueArgs = append(valueArgs, id)
 		valueArgs = append(valueArgs, name)
@@ -428,7 +427,7 @@ func postChair(c echo.Context) error {
 		valueArgs = append(valueArgs, popularity)
 		valueArgs = append(valueArgs, stock)
 
-		if i%100 == 0 {
+		if i%1000 == 0 {
 			c.Logger().Debug(fmt.Printf(q))
 			q = fmt.Sprintf(q, strings.Join(values, ","))
 			_, err = tx.Exec(q, valueArgs...)
