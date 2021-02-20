@@ -31,6 +31,11 @@ var mySQLEstateConnectionData *MySQLConnectionEnv
 var chairSearchCondition ChairSearchCondition
 var estateSearchCondition EstateSearchCondition
 
+var (
+	estateMap    = make(map[string][]Estate)
+	estateMapMux = sync.RWMutex{}
+)
+
 type InitializeResponse struct {
 	Language string `json:"language"`
 }
@@ -331,7 +336,7 @@ func initialize(c echo.Context) error {
 	}
 	var wg sync.WaitGroup
 	wg.Add(1)
-	errEstate := func () error {
+	errEstate := func() error {
 		defer wg.Done()
 		for _, p := range pathsEstate {
 			sqlFile, _ := filepath.Abs(p)
@@ -351,7 +356,7 @@ func initialize(c echo.Context) error {
 	}()
 
 	wg.Add(1)
-	errorChair := func () error {
+	errorChair := func() error {
 		defer wg.Done()
 		for _, p := range pathsChair {
 			sqlFile, _ := filepath.Abs(p)
@@ -835,6 +840,8 @@ func postEstate(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	// 物件検索mapを初期化
+	estateMap = make(map[string][]Estate)
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -924,23 +931,39 @@ func searchEstates(c echo.Context) error {
 
 	var res EstateSearchResponse
 	err = dbEstate.Get(&res.Count, countQuery+searchCondition, params...)
+
 	if err != nil {
 		c.Logger().Errorf("searchEstates DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	estateMap = make(map[string][]Estate)
 	estates := []Estate{}
-	params = append(params, perPage, page*perPage)
-	err = dbEstate.Select(&estates, searchQuery+searchCondition+limitOffset, params...)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return c.JSON(http.StatusOK, EstateSearchResponse{Count: 0, Estates: []Estate{}})
+	// mapに検索結果をぶち込む
+	// クエリ
+	params = append(params, perPage*4, 0)
+	if estateMap[searchCondition] == nil {
+		err = dbEstate.Select(&estates, searchQuery+searchCondition+limitOffset, params...)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return c.JSON(http.StatusOK, EstateSearchResponse{Count: 0, Estates: []Estate{}})
+			}
+			c.Logger().Errorf("searchEstates DB execution error : %v", err)
+			return c.NoContent(http.StatusInternalServerError)
 		}
-		c.Logger().Errorf("searchEstates DB execution error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res.Estates = estates
+	estateMapMux.Lock()
+	estateMap[searchCondition] = estates
+	estateMapMux.Unlock()
+	// ここでestateMap[検索条件]ができた
+
+	// perPage = 25
+	// page = 1
+
+	estateMapMux.RLock()
+	res.Estates = estateMap[searchCondition][page*perPage : page*perPage+perPage]
+	estateMapMux.RUnlock()
 
 	return c.JSON(http.StatusOK, res)
 }
